@@ -2,36 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\CategoryMaster;
-use App\ClientRequest;
-use App\ClientUnload;
 use App\Comments;
 use App\Contacts;
 use App\Friends;
-use App\ItemMaster;
 use App\LocationMaster;
-use App\ManagerRequest;
-use App\Material;
-use App\MaterialType;
-use App\PetrolOrder;
 use App\Post_likes;
 use App\Post_media;
-use App\Review;
 use App\TripFriend;
 use App\TripMembers;
 use App\TripPost;
 use App\TripPostTags;
 use App\Trips;
-use App\Unit;
 use App\User;
-use App\UserAddress;
-use App\UserMaster;
-use App\Vehicle;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use function PhpParser\filesInDir;
 use Validator;
+use File;
 
 class APIController extends Controller
 {
@@ -71,7 +59,7 @@ class APIController extends Controller
         $validator = Validator::make($input, [
             'mobile' => 'required',
             'contactname' => 'required',
-            'status' => 'required',
+//            'status' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -80,13 +68,17 @@ class APIController extends Controller
         $contacts = new Contacts();
         $contacts->mobile = request('mobile');
         $contacts->contactname = request('contactname');
-        $contacts->contactstatus = request('status');
+//        $contacts->contactstatus = request('status');
         $file = $request->file('profile_img');
-        if ($request->file('profile_img') != null) {
-            $destination_path = 'images/';
-            $filename = str_random(6) . '_' . $file->getClientOriginalName();
-            $file->move($destination_path, $filename);
-            $contacts->imageurl = 'images/' . $filename;
+        if (request('profile_img') != null) {
+            $data = request('profile_img');
+            list($type, $data) = explode(';', $data);
+            list(, $data) = explode(',', $data);
+            $data = base64_decode($data);
+            $image_name = time() . '.png';
+            $path = "images/" . $image_name;
+            file_put_contents($path, $data);
+            $contacts->imageurl = $path;
         }
         $contacts->save();
         $contact = Contacts::find($contacts->id);
@@ -109,11 +101,15 @@ class APIController extends Controller
         if (isset($contacts) > 0) {
             $contacts->contactname = request('contactname');
             $file = $request->file('profile_img');
-            if ($request->file('profile_img') != null) {
-                $destination_path = 'images/';
-                $filename = str_random(6) . '_' . $file->getClientOriginalName();
-                $file->move($destination_path, $filename);
-                $contacts->imageurl = 'images/' . $filename;
+            if (request('profile_img') != null) {
+                $data = request('profile_img');
+                list($type, $data) = explode(';', $data);
+                list(, $data) = explode(',', $data);
+                $data = base64_decode($data);
+                $image_name = time() . '.png';
+                $path = "images/" . $image_name;
+                file_put_contents($path, $data);
+                $contacts->imageurl = $path;
             }
             $contacts->save();
             return $this->sendResponse($contacts, 'Contact has been updated');
@@ -148,6 +144,37 @@ class APIController extends Controller
             $location->isactive = 0;
             $location->save();
             return $this->sendResponse([], 'Contact has been deleted');
+        } else {
+            return $this->sendError('No record available', '');
+        }
+    }
+
+    public function setprivacy(Request $request)
+    {
+        $input = $request->all();
+
+        $validator = Validator::make($input, [
+            'user_id' => 'required',
+            'privacy' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors());
+        }
+        $privacy = request('privacy');
+        $contact = Contacts::find(request('user_id'));
+        if (isset($contact)) {
+            $contact->privacy = $privacy;
+            $contact->save();
+
+            $trip_posts = TripPost::where(['post_by' => $contact->id])->get();
+            if (count($trip_posts) > 0) {
+                foreach ($trip_posts as $trip_post) {
+                    $trip_post->post_privacy = $privacy;
+                    $trip_post->save();
+                }
+            }
+            return $this->sendResponse([], 'Privacy has been updated');
         } else {
             return $this->sendError('No record available', '');
         }
@@ -621,7 +648,7 @@ class APIController extends Controller
         $input = $request->all();
         $validator = Validator::make($input, [
 //            'title' => 'required',
-            'description' => 'required',
+//            'description' => 'required',
             'post_by' => 'required',
         ]);
 
@@ -707,7 +734,6 @@ class APIController extends Controller
         }
     }////////////profile_img+
 
-    ///
     public function edit_trip_post(Request $request)
     {
         $input = $request->all();
@@ -968,11 +994,22 @@ class APIController extends Controller
         if ($validator->fails()) {
             return $this->sendError('Validation Error.', $validator->errors());
         }
-        $location = TripPost::find(request('id'));
-        if (isset($location) > 0) {
-            $location->is_del = 1;
-            $location->save();
-            return $this->sendResponse($location, 'Trip post has been deleted');
+        $trip_post = TripPost::find(request('id'));
+        if (isset($trip_post)) {
+            $post_media = Post_media::where(['post_id' => $trip_post->id])->get();
+            if (count($post_media) > 0) {
+                foreach ($post_media as $media) {
+                    $image_path = $media->media_url;
+                    if (File::exists($image_path)) {
+                        File::delete($image_path);
+                    }
+                }
+                Post_media::where(['post_id' => $trip_post->id])->delete();
+            }
+            Post_likes::where(['post_id' => $trip_post->id])->delete();
+            Comments::where(['post_id' => $trip_post->id])->delete();
+            $trip_post->delete();
+            return $this->sendResponse($trip_post, 'Trip post has been deleted');
         } else {
             return $this->sendError('No record available', '');
         }

@@ -53,6 +53,7 @@ Route::get('deletecontact', 'APIController@deletecontact');
 Route::get('get_contact_by_mobile', 'APIController@get_contact_by_mobile');
 Route::get('resendotp', 'APIController@resendotp');
 Route::get('searchuser', 'APIController@searchuser');
+Route::get('setprivacy', 'APIController@setprivacy');
 //Contacts Request
 
 
