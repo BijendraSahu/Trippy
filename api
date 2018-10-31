@@ -1,0 +1,41 @@
+<========Trippy Api=========>
+1. Login with google - google_id,name,email,image
+2. Login with facebook - same
+3. Particular Post Privacy - http://18.188.188.62/Trippy/setpostprivacy?post_id=1&privacy=friend
+4. Edit trip Address - edit trip api
+5. Edit Trip Location - edit trip api
+6. Edit Trip name - edit trip api - http://18.188.188.62/Trippy/updatetrips?trip_id=1&tripname=dcsa&contactid=2&tripdate=2018-10-27&triptime=17:20:00&tripstatus=Done&tripnotes=lnlan&friend_id=1,2
+7. Edit trip Friends - edit trip api
+8. Search user by name or number - api--
+9. Notification List - co
+10. Post according Post id - co
+11. Remove Notification - co
+12. mark read Notification - co
+13. Trip Tag Member : Show post timeline---
+
+Mark as Read Notification
+http://18.188.188.62/Trippy/make_as_read_noti?notification_id=1
+
+Remove Notification
+http://18.188.188.62/Trippy/remove_noti?notification_id=1
+
+User Notification
+http://18.188.188.62/Trippy/getusernotification?user_id=1
+
+get_trip_post_by_trip_post_id
+http://18.188.188.62/Trippy/get_trip_post_by_trip_post_id?trip_post_id_id=1
+
+searchuser
+http://18.188.188.62/Trippy/searchuser?search_name=am  // search_name=amit or 9876543212
+
+
+google_fb_id  ///post method  base 64 image as on 'create_contact' api
+http://18.188.188.62/Trippy/google_fb_login?google_fb_id=fvzxdgfh&contactname=dasfas&profile_img=base64
+
+
+<========Trippy Api=========>
+ALTER TABLE `locations` CHANGE `loc_name` `loc_name` VARCHAR(100) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL;
+ALTER TABLE `locations` CHANGE `address` `address` VARCHAR(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL;
+ALTER TABLE `locations` CHANGE `lat` `lat` VARCHAR(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL;
+ALTER TABLE `locations` CHANGE `lon` `lon` VARCHAR(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL;
+ALTER TABLE `contacts` ADD `google_fb_id` VARCHAR(100) NULL DEFAULT NULL AFTER `id`;

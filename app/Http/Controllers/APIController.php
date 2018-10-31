@@ -14,6 +14,7 @@ use App\TripPost;
 use App\TripPostTags;
 use App\Trips;
 use App\User;
+use App\UserNotifications;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -83,6 +84,46 @@ class APIController extends Controller
         $contacts->save();
         $contact = Contacts::find($contacts->id);
         return $this->sendResponse($contact, 'Contacts has been saved');
+    }////////////profile_img+
+
+
+    public function google_fb_login(Request $request)
+    {
+        $input = $request->all();
+
+        $validator = Validator::make($input, [
+            'google_fb_id' => 'required',
+            'contactname' => 'required',
+//            'status' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors());
+        }
+        $fb_contact = Contacts::where(['google_fb_id' => request('google_fb_id')])->first();
+        if (isset($fb_contact)) {
+            return $this->sendResponse($fb_contact, 'Login through social media');
+        } else {
+            $contacts = new Contacts();
+//            $contacts->mobile = request('mobile');
+            $contacts->google_fb_id = request('google_fb_id');
+            $contacts->contactname = request('contactname');
+            $file = $request->file('profile_img');
+            if (request('profile_img') != null) {
+                $data = request('profile_img');
+                list($type, $data) = explode(';', $data);
+                list(, $data) = explode(',', $data);
+                $data = base64_decode($data);
+                $image_name = time() . '.png';
+                $path = "images/" . $image_name;
+                file_put_contents($path, $data);
+                $contacts->imageurl = $path;
+            }
+            $contacts->save();
+            $fbcontact = Contacts::find($contacts->id);
+            return $this->sendResponse($fbcontact, 'Contacts has been saved');
+        }
+
     }////////////profile_img+
 
     public function updatecontact(Request $request)
@@ -220,6 +261,7 @@ class APIController extends Controller
         else
             $user = ['status' => 'notexist', 'otp' => $otp];
 
+
         file_get_contents("http://63.142.255.148/api/sendmessage.php?usr=retinodes&apikey=1A4428ABD1CB0BD43FB3&sndr=iapptu&ph=$mobile&message=Dear%20user,%20OTP%20to%20login%20into%20trippy%20app%20is%20$otp");
         return $this->sendResponse($user, 'Otp has been send');
     }
@@ -236,7 +278,7 @@ class APIController extends Controller
             return $this->sendError('Validation Error.', $validator->errors());
         }
         $s = request('search_name');
-        $user = DB::select("SELECT c.id, c.contactname, c.imageurl FROM contacts c WHERE c.contactname LIKE '$s%' and c.isactive = 1");
+        $user = DB::select("SELECT c.id, c.contactname, c.imageurl FROM contacts c WHERE c.isactive = 1 and (c.contactname LIKE '$s%' or c.mobile = '$s')");
         if ($user != null) {
             return $this->sendResponse($user, 'Contacts List');
         } else {
@@ -363,6 +405,29 @@ class APIController extends Controller
 
 
     /**************Trips Master**********************/
+    public function setpostprivacy(Request $request)
+    {
+        $input = $request->all();
+
+        $validator = Validator::make($input, [
+            'post_id' => 'required',
+            'privacy' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors());
+        }
+        $privacy = request('privacy');
+        $trip_post = TripPost::find(request('post_id'));
+        if (isset($trip_post)) {
+            $trip_post->post_privacy = $privacy;
+            $trip_post->save();
+            return $this->sendResponse([], 'Privacy has been updated');
+        } else {
+            return $this->sendError('No record available', '');
+        }
+    }
+
     public function create_trips(Request $request)
     {
         $input = $request->all();
@@ -403,34 +468,40 @@ class APIController extends Controller
         return $this->sendResponse($trip, 'Trips has been saved');
     }
 
-    public function updatetrips(Request $request)
+
+    public
+    function updatetrips(Request $request)
     {
         $input = $request->all();
 
         $validator = Validator::make($input, [
-            'id' => 'required',
-            'tripname' => 'required',
-            'contactid' => 'required',
-            'tripdate' => 'required',
-            'triptime' => 'required',
-            'tripstatus' => 'required',
-            'tripnotes' => 'required',
-            'locationid' => 'required',
+            'trip_id' => 'required',
+//            'tripname' => 'required',
+//            'contactid' => 'required',
+//            'tripdate' => 'required',
+//            'triptime' => 'required',
+//            'tripstatus' => 'required',
+//            'tripnotes' => 'required',
+//            'locationid' => 'required',
         ]);
 
         if ($validator->fails()) {
             return $this->sendError('Validation Error.', $validator->errors());
         }
-        $trips = Trips::find(request('id'));
-        if (isset($trips) > 0) {
+        $trips = Trips::find(request('trip_id'));
+        if (isset($trips)) {
             $trips->tripname = request('tripname');
-            $trips->contactid = request('contactid');
-            $trips->tripdate = request('tripdate');
-            $trips->triptime = request('triptime');
-            $trips->tripstatus = request('tripstatus');
-            $trips->tripnotes = request('tripnotes');
-            $trips->locationid = request('locationid');
+            $trips->contactid = request('contactid') == null ? $trips->contactid : request('contactid');
+            $trips->tripdate = request('tripdate') == null ? $trips->tripdate : request('tripdate');
+            $trips->triptime = request('triptime') == null ? $trips->triptime : request('triptime');
+            $trips->tripstatus = request('tripstatus') == null ? $trips->tripstatus : request('tripstatus');
+            $trips->tripnotes = request('tripnotes') == null ? $trips->tripnotes : request('tripnotes');
+//            $trips->locationid = request('locationid');
             $trips->save();
+//            $location = LocationMaster::find($trips->locationid);
+//            $location->loc_name = request('loc_name') == null ? $location->loc_name : request('loc_name');
+//            $location->address = request('address') == null ? $location->address : request('address');
+//            $location->save();
 
             $tag = TripFriend::where(['trip_id' => $trips->id])->delete();
 
@@ -450,7 +521,8 @@ class APIController extends Controller
         }
     }
 
-    public function getalltrips(Request $request)
+    public
+    function getalltrips(Request $request)
     {
         $trips = DB::select("select id, tripname,contactid,tripdate,triptime,tripstatus,tripnotes,locationid from trips where isdel=0");
         if (count($trips) > 0) {
@@ -464,7 +536,8 @@ class APIController extends Controller
         }
     }
 
-    public function get_my_trip(Request $request)
+    public
+    function get_my_trip(Request $request)
     {
         $input = $request->all();
 
@@ -496,7 +569,8 @@ class APIController extends Controller
 //        }
     }
 
-    public function deletetrips(Request $request)
+    public
+    function deletetrips(Request $request)
     {
         $input = $request->all();
 
@@ -517,7 +591,8 @@ class APIController extends Controller
         }
     }
 
-    public function gettrips_byid(Request $request)
+    public
+    function gettrips_byid(Request $request)
     {
         $input = $request->all();
 
@@ -535,11 +610,13 @@ class APIController extends Controller
             return $this->sendError('No record available', '');
         }
     }
+
     /**************Trips Master**********************/
 
 
     /**************TripMembers Master**********************/
-    public function create_tripmembers(Request $request)
+    public
+    function create_tripmembers(Request $request)
     {
         $input = $request->all();
 
@@ -562,7 +639,8 @@ class APIController extends Controller
         return $this->sendResponse($tripm, 'Trip Members has been saved');
     }
 
-    public function get_tripfriends(Request $request)
+    public
+    function get_tripfriends(Request $request)
     {
         $input = $request->all();
 
@@ -582,7 +660,8 @@ class APIController extends Controller
         }
     }
 
-    public function deletetripmembers(Request $request)
+    public
+    function deletetripmembers(Request $request)
     {
         $input = $request->all();
 
@@ -600,11 +679,13 @@ class APIController extends Controller
             return $this->sendError('No record available', '');
         }
     }
+
     /**************TripMembers Master**********************/
 
 
     /**************Trip Post Master**********************/
-    public function share_trip_post(Request $request)
+    public
+    function share_trip_post(Request $request)
     {
         $input = $request->all();
         $validator = Validator::make($input, [
@@ -641,8 +722,8 @@ class APIController extends Controller
         return $this->sendResponse($pst, 'Trip Post has been shared');
     }
 
-
-    public function create_trip_post(Request $request)
+    public
+    function create_trip_post(Request $request)
     {
 
         $input = $request->all();
@@ -665,6 +746,7 @@ class APIController extends Controller
         else if (request('visible_till') == '48')
             $trip_post->visible_till = Carbon::now('Asia/Kolkata')->addHour(48); //request('visible_till');
         $trip_post->caption = request('caption');
+        $trip_post->created_time = Carbon::now('Asia/Kolkata');
         $trip_post->save();
 
         $tids = explode(",", request('tagid'));
@@ -698,7 +780,8 @@ class APIController extends Controller
         return $this->sendResponse($pst, 'Trip Post has been saved');
     }////////////profile_img+
 
-    public function updatetrip_post(Request $request)
+    public
+    function updatetrip_post(Request $request)
     {
         $input = $request->all();
 
@@ -734,7 +817,8 @@ class APIController extends Controller
         }
     }////////////profile_img+
 
-    public function edit_trip_post(Request $request)
+    public
+    function edit_trip_post(Request $request)
     {
         $input = $request->all();
         $validator = Validator::make($input, [
@@ -760,7 +844,8 @@ class APIController extends Controller
         }
     }////////////profile_img+
 
-    public function get_Alltrip_posts(Request $request)
+    public
+    function get_Alltrip_posts(Request $request)
     {
         $input = $request->all();
 
@@ -813,7 +898,8 @@ class APIController extends Controller
         }
     }
 
-    public function get_trip_post_by_userid(Request $request)
+    public
+    function get_trip_post_by_userid(Request $request)
     {
         $input = $request->all();
 
@@ -868,7 +954,8 @@ class APIController extends Controller
     }
 
     /*********Trip Hide**********/
-    public function get_hidetrip_post_by_userid(Request $request)
+    public
+    function get_hidetrip_post_by_userid(Request $request)
     {
         $input = $request->all();
 
@@ -920,7 +1007,8 @@ class APIController extends Controller
         }
     }
 
-    public function hide_unhide_trip_post(Request $request)
+    public
+    function hide_unhide_trip_post(Request $request)
     {
         $input = $request->all();
         $validator = Validator::make($input, [
@@ -949,7 +1037,8 @@ class APIController extends Controller
 
     /*********Trip Hide**********/
 
-    public function get_trip_post_by_trip_id(Request $request)
+    public
+    function get_trip_post_by_trip_id(Request $request)
     {
         $input = $request->all();
 
@@ -983,7 +1072,44 @@ class APIController extends Controller
         }
     }
 
-    public function deletetrip_post(Request $request)
+    public
+    function get_trip_post_by_trip_post_id(Request $request)
+    {
+        $input = $request->all();
+
+        $validator = Validator::make($input, [
+            'trip_post_id' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors());
+        }
+        $trip_post_id = request('trip_post_id');
+//        $contact = DB::select("select * from trip_post where trip_id = $trip_id");
+//        $s = "select pt.*, c.contactname as posted_by from trip_post pt, contacts c where pt.post_by = c.id and pt.trip_id = $trip_id";
+//        $posts = DB::select($s);
+        $trip_post = TripPost::find($trip_post_id);
+        if (isset($trip_post)) {
+//            foreach ($posts as $post) {
+
+            $media_re = DB::select("select pm.media_url,pm.media_type from post_media pm where pm.post_id=$trip_post");
+
+            $comment_re = DB::select("select cm.id, cm.user_id, c.contactname, c.imageurl, cm.description from post_comments cm, contacts c where cm.user_id = c.id and cm.post_id=$trip_post");
+
+            $like_re = DB::select("SELECT c.contactname, c.imageurl, pl.user_id FROM post_likes pl, contacts c WHERE pl.user_id = c.id and pl.post_id=$trip_post");
+
+            $post_tags = DB::select("SELECT * FROM `trip_post_tag` WHERE trip_post_id=$trip_post");
+
+            $results[] = ['id' => $trip_post, 'title' => $trip_post->title, 'description' => $trip_post->description, 'trip_id' => $trip_post->trip_id, 'post_img' => $trip_post->post_img, 'is_del' => $trip_post->is_del, 'posted_by' => $trip_post->posted_by, 'post_tags' => $post_tags, 'media' => $media_re, 'likes' => count($like_re), 'comments' => count($comment_re)];
+//            }
+            return $this->sendResponse($results, 'Trip Post');
+        } else {
+            return $this->sendError('No record available', '');
+        }
+    }
+
+    public
+    function deletetrip_post(Request $request)
     {
         $input = $request->all();
 
@@ -1015,7 +1141,8 @@ class APIController extends Controller
         }
     }
 
-    public function create_trip_post_tag(Request $request)
+    public
+    function create_trip_post_tag(Request $request)
     {
         $input = $request->all();
         $validator = Validator::make($input, [
@@ -1037,7 +1164,8 @@ class APIController extends Controller
         return $this->sendResponse([], 'Tagged has been saved');
     }
 
-    public function deletetrip_posttag(Request $request)
+    public
+    function deletetrip_posttag(Request $request)
     {
         $input = $request->all();
         $validator = Validator::make($input, [
@@ -1064,7 +1192,8 @@ class APIController extends Controller
 
 
     /*****post like****/
-    public function post_like(Request $request)
+    public
+    function post_like(Request $request)
     {
         $input = $request->all();
 
@@ -1091,7 +1220,8 @@ class APIController extends Controller
         }
     }
 
-    public function post_comment(Request $request)
+    public
+    function post_comment(Request $request)
     {
         $input = $request->all();
 
@@ -1115,10 +1245,7 @@ class APIController extends Controller
         return $this->sendResponse($pl, 'Comment has been saved');
     }
 
-
     /*****post like****/
-
-
     /**************Trip Post Master**********************/
 
 
@@ -1182,6 +1309,7 @@ class APIController extends Controller
             return $this->sendError('No record available', '');
         }
     }
+
     /**************Friend List**********************/
 
 
@@ -1189,7 +1317,8 @@ class APIController extends Controller
 
 
     /**************Friends Master**********************/
-    public function checkrequest(Request $request)
+    public
+    function checkrequest(Request $request)
     {
         $input = $request->all();
         $validator = Validator::make($input, [
@@ -1221,7 +1350,8 @@ class APIController extends Controller
         }
     }
 
-    public function create_friend(Request $request)
+    public
+    function create_friend(Request $request)
     {
         $input = $request->all();
 
@@ -1241,7 +1371,8 @@ class APIController extends Controller
         return $this->sendResponse($friends, 'Friend Request has been sent');
     }
 
-    public function cancelrequest(Request $request) ////by user send/cancel button
+    public
+    function cancelrequest(Request $request) ////by user send/cancel button
     {
         $input = $request->all();
 
@@ -1262,7 +1393,8 @@ class APIController extends Controller
         }
     }
 
-    public function acceptrequest(Request $request)
+    public
+    function acceptrequest(Request $request)
     {
         $input = $request->all();
 
@@ -1284,7 +1416,8 @@ class APIController extends Controller
         }
     }
 
-    public function getfriends(Request $request)
+    public
+    function getfriends(Request $request)
     {
         $input = $request->all();
 
@@ -1305,7 +1438,8 @@ id in (select f.contactid from friends f where f.status='friends' and f.friendid
         }
     }
 
-    public function block(Request $request)
+    public
+    function block(Request $request)
     {
         $input = $request->all();
 
@@ -1326,7 +1460,8 @@ id in (select f.contactid from friends f where f.status='friends' and f.friendid
         }
     }
 
-    public function getblockedfriends(Request $request)
+    public
+    function getblockedfriends(Request $request)
     {
         $input = $request->all();
 
@@ -1346,7 +1481,8 @@ id in (select f.contactid from friends f where f.status='friends' and f.friendid
         }
     }
 
-    public function deletefriend(Request $request)
+    public
+    function deletefriend(Request $request)
     {
         $input = $request->all();
 
@@ -1367,7 +1503,8 @@ id in (select f.contactid from friends f where f.status='friends' and f.friendid
         }
     }
 
-    public function requestlist(Request $request)
+    public
+    function requestlist(Request $request)
     {
         $input = $request->all();
 
@@ -1386,6 +1523,50 @@ id in (select f.contactid from friends f where f.status='friends' and f.friendid
             return $this->sendError('No record available', '');
         }
     }
+
+    public function make_as_read_noti()
+    {
+        $noti = UserNotifications::find(request('notification_id'));
+        if (isset($noti)) {
+            $noti->seen = 1;
+            $noti->save();
+            return $this->sendResponse($noti, 'Notification marked as read');
+        } else {
+            return $this->sendError('No record available', '');
+        }
+    }
+
+
+    public function remove_noti()
+    {
+        $noti = UserNotifications::find(request('notification_id'));
+        if (isset($noti)) {
+            $noti->delete();
+            return $this->sendResponse([], 'Notification has been removed');
+        } else {
+            return $this->sendError('No record available', '');
+        }
+    }
+
+    public function getusernotification()
+    {
+        $user_id = request('user_id');
+//        $user_notifications = DB::select("select t.name, (select c.state from cities c where u.state_id = c.CID) as state, (select c.state from cities c where u.city_id = c.CID) as city from users u, timeline t, notifications n where  u.timeline_id = t.id and n.notified_by = u.id and n.user_id = '$user_id'");
+        $user_notifications = UserNotifications::where(['user_id' => $user_id])->orderBy('id', 'desc')->get();
+        $results = [];
+        if (count($user_notifications) > 0) {
+            foreach ($user_notifications as $user_notification) {
+                $user = Contacts::find($user_notification->notified_by);
+                $results[] = ['id' => $user_notification->id, 'post_id' => $user_notification->post_id, 'description' => $user_notification->description, 'user_id' => $user_notification->user_id, 'notified_by' => $user_notification->notified_by, 'seen' => $user_notification->seen, 'notified_by_name' => ucwords($user->contactname), 'notify_by_pic' => $user->imageurl, 'created_at' => $user_notification->created_at];
+            }
+            return $this->sendResponse($results, 'Notification List');
+        } else {
+            return $this->sendError('No record available', '');
+        }
+    }
+
+
+
     /**************Friends Master**********************/
     /**************Request Accept/Reject/Cancel/Unfriend**********************/
 

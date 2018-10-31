@@ -64,6 +64,7 @@ Route::get('edit_trip_post', 'APIController@edit_trip_post');
 Route::post('updatetrip_post', 'APIController@updatetrip_post');
 Route::get('get_Alltrip_posts', 'APIController@get_Alltrip_posts');
 Route::get('get_trip_post_by_trip_id', 'APIController@get_trip_post_by_trip_id');
+Route::get('get_trip_post_by_trip_post_id', 'APIController@get_trip_post_by_trip_post_id');
 Route::get('get_trip_post_by_userid', 'APIController@get_trip_post_by_userid');
 Route::get('get_hidetrip_post_by_userid', 'APIController@get_hidetrip_post_by_userid');
 Route::get('hide_unhide_trip_post', 'APIController@hide_unhide_trip_post');
@@ -71,6 +72,8 @@ Route::get('deletetrip_post', 'APIController@deletetrip_post');
 
 Route::get('create_trip_post_tag', 'APIController@create_trip_post_tag');
 Route::get('deletetrip_posttag', 'APIController@deletetrip_posttag');
+
+Route::get('setpostprivacy', 'APIController@setpostprivacy');
 
 
 //post Like/Comment
@@ -107,6 +110,14 @@ Route::get('requestlist', 'APIController@requestlist');
 Route::get('unfriend', 'APIController@deletefriend'); //unfrind
 //Friends Request
 //Request Accept/Reject/Cancel/Unfriend
+
+
+//Notification
+Route::post('google_fb_login', 'APIController@google_fb_login'); //user notification read
+Route::get('make_as_read_noti', 'APIController@make_as_read_noti'); //user notification read
+Route::get('remove_noti', 'APIController@remove_noti'); //user notification remove
+Route::get('getusernotification', 'APIController@getusernotification'); //user notification
+//Notification
 
 /*************API******************/
 

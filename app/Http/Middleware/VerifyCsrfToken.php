@@ -12,6 +12,6 @@ class VerifyCsrfToken extends Middleware
      * @var array
      */
     protected $except = [
-        'create_contact', 'updatecontact', 'create_trip_post', 'updatetrip_post'
+        'create_contact', 'updatecontact', 'create_trip_post', 'updatetrip_post','google_fb_login'
     ];
 }
